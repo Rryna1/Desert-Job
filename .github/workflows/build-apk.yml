@@ -19,16 +19,36 @@ jobs:
       - name: Get files
         uses: actions/checkout@v4
 
-      - name: Extract project ZIP
+      - name: Extract Android project
         run: |
-          ZIP_FILE=$(find . -maxdepth 1 -type f -iname "*.zip" | head -n 1)
+          ZIP_FILE=$(find . -maxdepth 1 -type f -iname "*.zip" ! -iname "*Icon*" | head -n 1)
           if [ -z "$ZIP_FILE" ]; then
-            echo "Project ZIP not found"
+            echo "Android project ZIP not found"
             exit 1
           fi
           mkdir project
           unzip -q "$ZIP_FILE" -d project
-          find project -name "settings.gradle*" -print
+
+      - name: Install Desert Job icon
+        run: |
+          ICON_ZIP=$(find . -maxdepth 1 -type f -iname "*Icon*.zip" | head -n 1)
+          if [ -z "$ICON_ZIP" ]; then
+            echo "Icon ZIP not found"
+            exit 1
+          fi
+          mkdir icon_assets
+          unzip -q "$ICON_ZIP" -d icon_assets
+          RES=$(find project -type d -path "*/app/src/main/res" | head -n 1)
+          if [ -z "$RES" ]; then
+            echo "Android res folder not found"
+            exit 1
+          fi
+          for DIR in icon_assets/mipmap-*; do
+            [ -d "$DIR" ] && cp -R "$DIR" "$RES/"
+          done
+          MANIFEST=$(find project -name AndroidManifest.xml | head -n 1)
+          sed -i 's/android:label="[^"]*"/android:label="Desert Job"/' "$MANIFEST"
+          sed -i 's/android:icon="[^"]*"/android:icon="@mipmap\/ic_launcher"/' "$MANIFEST"
 
       - name: Set up Java
         uses: actions/setup-java@v4
