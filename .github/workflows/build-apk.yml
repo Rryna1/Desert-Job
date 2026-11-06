@@ -22,12 +22,28 @@ jobs:
       - name: Extract Android project
         run: |
           ZIP_FILE="./DesertJobRun.zip"
-          if [ -z "$ZIP_FILE" ]; then
+          if [ ! -f "$ZIP_FILE" ]; then
             echo "Android project ZIP not found"
             exit 1
           fi
           mkdir project
           unzip -q "$ZIP_FILE" -d project
+
+      - name: Replace game HTML
+        run: |
+          mkdir game_files
+          unzip -o "./DesertJobb.zip" -d game_files
+          HTML=$(find game_files -type f -iname "*.html" | head -n 1)
+          if [ -z "$HTML" ]; then
+            echo "HTML file not found"
+            exit 1
+          fi
+          ASSETS=$(find project -type d -path "*/app/src/main/assets" | head -n 1)
+          if [ -z "$ASSETS" ]; then
+            echo "Android assets folder not found"
+            exit 1
+          fi
+          cp "$HTML" "$ASSETS/index.html"
 
       - name: Install Desert Job icon
         run: |
