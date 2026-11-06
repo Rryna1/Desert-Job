@@ -1,34 +1,4 @@
 
-name: Build Desert Job APK
-
-on:
-  workflow_dispatch:
-  push:
-    paths:
-      - "*.zip"
-      - ".github/workflows/build-apk.yml"
-
-permissions:
-  contents: read
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Get files
-        uses: actions/checkout@v4
-
-      - name: Extract Android project
-        run: |
-          ZIP_FILE=$(find . -maxdepth 1 -type f -iname "*.zip" ! -iname "*Icon*" | head -n 1)
-          if [ -z "$ZIP_FILE" ]; then
-            echo "Android project ZIP not found"
-            exit 1
-          fi
-          mkdir project
-          unzip -q "$ZIP_FILE" -d project
-
       - name: Install Desert Job icon
         run: |
           ICON_ZIP=$(find . -maxdepth 1 -type f -iname "*Icon*.zip" | head -n 1)
@@ -38,41 +8,19 @@ jobs:
           fi
           mkdir icon_assets
           unzip -q "$ICON_ZIP" -d icon_assets
-          RES=$(find project -type d -path "*/app/src/main/res" | head -n 1)
-          if [ -z "$RES" ]; then
-            echo "Android res folder not found"
+
+          MANIFEST=$(find project -name AndroidManifest.xml | head -n 1)
+          if [ -z "$MANIFEST" ]; then
+            echo "AndroidManifest.xml not found"
             exit 1
           fi
+
+          RES="$(dirname "$MANIFEST")/res"
+          mkdir -p "$RES"
+
           for DIR in icon_assets/mipmap-*; do
-            [ -d "$DIR" ] && cp -R "$DIR" "$RES/"
+            [ -d "$DIR" ] && mkdir -p "$RES/$(basename "$DIR")" && cp "$DIR"/*.png "$RES/$(basename "$DIR")/"
           done
-          MANIFEST=$(find project -name AndroidManifest.xml | head -n 1)
+
           sed -i 's/android:label="[^"]*"/android:label="Desert Job"/' "$MANIFEST"
           sed -i 's/android:icon="[^"]*"/android:icon="@mipmap\/ic_launcher"/' "$MANIFEST"
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "8.7"
-
-      - name: Build APK
-        run: |
-          SETTINGS=$(find project -name "settings.gradle" -o -name "settings.gradle.kts" | head -n 1)
-          if [ -z "$SETTINGS" ]; then
-            echo "Gradle project not found"
-            exit 1
-          fi
-          cd "$(dirname "$SETTINGS")"
-          gradle assembleDebug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: DesertJob-APK
-          path: project/**/build/outputs/apk/debug/*.apk
