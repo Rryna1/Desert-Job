@@ -21,7 +21,7 @@ jobs:
 
       - name: Extract Android project
         run: |
-          ZIP_FILE=$(find . -maxdepth 1 -type f -iname "*.zip" ! -iname "*Icon*" | head -n 1)
+          ZIP_FILE="./DesertJobRun.zip"
           if [ -z "$ZIP_FILE" ]; then
             echo "Android project ZIP not found"
             exit 1
